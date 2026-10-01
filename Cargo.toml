@@ -1,0 +1,30 @@
+[package]
+exclude = ["*.tgz", "**/*.tgz", "/registration/**", "/state/**", "/.local/**", "/.state/**", "/.data/**", "/secrets/**", "/credentials/**", "/.env", "/.env.production", "/.env.local", "/*.tgz", "/*.tar.gz", "/*.tar", "/*.zip", "/*.whl", "/*.crate", "/.ruff_cache/**", "/.mypy_cache/**", "/.tox/**", "/.nox/**", "/.hypothesis/**", "/.coverage", "/.coverage.*", "/htmlcov/**", "/lcov.info", "/junit.xml", "/*.profraw", "/*.profdata", "/*.egg-info/**", "/target/**", "/node_modules/**", "/dist/**", "/build/**", "/.cache/**", "/.pytest_cache/**", "/coverage/**"]
+name = "zixcel-interaction"
+version = "0.10.0"
+edition = "2024"
+rust-version = "1.97"
+description = "Transport-neutral resource, action, revision and change contracts"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/zixcel/zixcel-interaction"
+publish = ["zixcel-private"]
+
+[workspace]
+members = ["."]
+resolver = "3"
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false

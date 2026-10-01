@@ -1,0 +1,26 @@
+{
+  "name": "@zixcel/interaction",
+  "version": "0.10.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "files": [
+    "web",
+    "README.md",
+    "!**/*.tgz",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./web/contracts.d.mts",
+      "import": "./web/contracts.mjs"
+    },
+    "./input": {
+      "types": "./web/input.d.mts",
+      "import": "./web/input.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
