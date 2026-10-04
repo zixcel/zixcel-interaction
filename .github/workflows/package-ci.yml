@@ -1,0 +1,60 @@
+name: npm package CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NPM_CONFIG_FETCH_RETRIES: '0'
+      NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - name: Isolated npm configuration and fresh cache
+        run: |
+          : > "$RUNNER_TEMP/release-user.npmrc"
+          : > "$RUNNER_TEMP/release-global.npmrc"
+          echo "NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+      - name: Fixed npm and isolated empty configuration
+        run: |
+          for config in .npmrc .pnpmfile.cjs .pnpmfile.mjs pnpm-workspace.yaml .yarnrc .yarnrc.yml; do test ! -e "$config"; done
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; if(JSON.parse(readFileSync("package.json")).pnpm) process.exit(1)'
+          : > "$NPM_CONFIG_USERCONFIG"
+          : > "$NPM_CONFIG_GLOBALCONFIG"
+          npm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund
+      - name: Package metadata and real public registry dependencies
+        run: node .github/scripts/check-source.mjs
+      - name: Repository tests
+        run: node --test --test-isolation=none test/input.test.mjs test/web.test.mjs
+      - name: Pack reviewed files without lifecycle hooks
+        id: pack
+        run: |
+          mkdir outgoing
+          npm pack --ignore-scripts --json --pack-destination outgoing > "$RUNNER_TEMP/pack.json"
+          mv "outgoing/$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1]))[0].filename)' "$RUNNER_TEMP/pack.json")" outgoing/package.tgz
+          /usr/bin/python3 -E .github/scripts/check-pack.py outgoing/package.tgz > outgoing/verification.json
+      - name: Fresh cache installed pack consumer
+        run: |
+          consumer=$(mktemp -d)
+          archive="$PWD/outgoing/package.tgz"
+          cp .github/scripts/consumer.mjs "$consumer/test.mjs"
+          printf '%s\n' '{"private":true,"type":"module"}' > "$consumer/package.json"
+          (cd "$consumer" && NPM_CONFIG_CACHE="$consumer/cache" npm install "$archive" --ignore-scripts --no-audit --no-fund --offline && node test.mjs)
+      - id: artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: npm-package
+          path: outgoing/
+          if-no-files-found: error
+          retention-days: 3
