@@ -22,5 +22,18 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zixcel/zixcel-interaction.git"
+  },
+  "homepage": "https://github.com/zixcel/zixcel-interaction#readme",
+  "bugs": {
+    "url": "https://github.com/zixcel/zixcel-interaction/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "description": "Generic resource, action, revision, outcome and input-declaration contracts"
 }

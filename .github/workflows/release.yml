@@ -1,0 +1,180 @@
+name: Reviewed npm release
+on:
+  workflow_dispatch:
+    inputs:
+      expected-source-SHA:
+        type: string
+        required: true
+      expected-archive-SHA256:
+        type: string
+        required: true
+      expected-latest:
+        description: Reviewed current latest version, or <none>
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'zixcel/zixcel-interaction' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      artifact_id: ${{ steps.artifact.outputs.artifact-id }}
+    env:
+      NPM_CONFIG_FETCH_RETRIES: '0'
+      NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - name: Exact reviewed source and dispatch
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.expected-source-SHA }}
+          EXPECTED_ARCHIVE_SHA256: ${{ inputs.expected-archive-SHA256 }}
+        run: |
+          [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$EXPECTED_SOURCE_SHA" =~ ^[a-f0-9]{40}$ && "$EXPECTED_SOURCE_SHA" == "$GITHUB_SHA" ]]
+          [[ "$EXPECTED_ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ ]]
+      - name: Isolated npm configuration and fresh cache
+        run: |
+          : > "$RUNNER_TEMP/release-user.npmrc"
+          : > "$RUNNER_TEMP/release-global.npmrc"
+          echo "NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+      - name: Fixed npm and isolated empty configuration
+        run: |
+          for config in .npmrc .pnpmfile.cjs .pnpmfile.mjs pnpm-workspace.yaml .yarnrc .yarnrc.yml; do test ! -e "$config"; done
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; if(JSON.parse(readFileSync("package.json")).pnpm) process.exit(1)'
+          : > "$NPM_CONFIG_USERCONFIG"
+          : > "$NPM_CONFIG_GLOBALCONFIG"
+          npm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund
+      - name: Package metadata and real public registry dependencies
+        run: node .github/scripts/check-source.mjs
+      - name: Repository tests
+        run: node --test --test-isolation=none test/input.test.mjs test/web.test.mjs
+      - name: Pack reviewed files without lifecycle hooks
+        id: pack
+        run: |
+          mkdir outgoing
+          npm pack --ignore-scripts --json --pack-destination outgoing > "$RUNNER_TEMP/pack.json"
+          mv "outgoing/$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1]))[0].filename)' "$RUNNER_TEMP/pack.json")" outgoing/package.tgz
+          /usr/bin/python3 -E .github/scripts/check-pack.py outgoing/package.tgz > outgoing/verification.json
+      - name: Fresh cache installed pack consumer
+        run: |
+          consumer=$(mktemp -d)
+          archive="$PWD/outgoing/package.tgz"
+          cp .github/scripts/consumer.mjs "$consumer/test.mjs"
+          printf '%s\n' '{"private":true,"type":"module"}' > "$consumer/package.json"
+          (cd "$consumer" && NPM_CONFIG_CACHE="$consumer/cache" npm install "$archive" --ignore-scripts --no-audit --no-fund --offline && node test.mjs)
+      - name: Match reviewed distribution digest
+        env:
+          EXPECTED_ARCHIVE_SHA256: ${{ inputs.expected-archive-SHA256 }}
+        run: echo "$EXPECTED_ARCHIVE_SHA256  outgoing/package.tgz" | sha256sum --check --strict
+      - id: artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: npm-package
+          path: outgoing/
+          if-no-files-found: error
+          retention-days: 3
+  publish:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NPM_CONFIG_FETCH_RETRIES: '0'
+      NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - name: Isolated npm configuration and fresh cache
+        run: |
+          : > "$RUNNER_TEMP/release-user.npmrc"
+          : > "$RUNNER_TEMP/release-global.npmrc"
+          echo "NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.15.0'
+          package-manager-cache: false
+      - run: |
+          : > "$NPM_CONFIG_USERCONFIG"
+          : > "$NPM_CONFIG_GLOBALCONFIG"
+          npm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+          path: incoming
+      - name: Publish reviewed archive once with OIDC and verify registry state
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.expected-source-SHA }}
+          EXPECTED_ARCHIVE_SHA256: ${{ inputs.expected-archive-SHA256 }}
+          EXPECTED_LATEST: ${{ inputs.expected-latest }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import {readFileSync} from 'node:fs'
+          import {createHash} from 'node:crypto'
+          import {execFileSync} from 'node:child_process'
+          import {createRequire} from 'node:module'
+          import {resolve} from 'node:path'
+          const name='@zixcel/interaction', repository='zixcel/zixcel-interaction', env=process.env
+          assert.equal(env.GITHUB_REPOSITORY,repository);assert.equal(env.GITHUB_REF,'refs/heads/main')
+          assert.equal(env.GITHUB_EVENT_NAME,'workflow_dispatch');assert.equal(env.GITHUB_SHA,env.EXPECTED_SOURCE_SHA)
+          assert(/^[a-f0-9]{40}$/.test(env.EXPECTED_SOURCE_SHA));assert(/^[a-f0-9]{64}$/.test(env.EXPECTED_ARCHIVE_SHA256))
+          assert(!env.NPM_TOKEN&&!env.NODE_AUTH_TOKEN,'token fallback forbidden')
+          assert(env.ACTIONS_ID_TOKEN_REQUEST_URL&&env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,'GitHub OIDC unavailable')
+          assert.equal(execFileSync('npm',['--version'],{encoding:'utf8'}).trim(),'11.12.1')
+          const require=createRequire(resolve(execFileSync('npm',['root','-g'],{encoding:'utf8'}).trim(),'npm/package.json'))
+          const semver=require('semver'), data=readFileSync('incoming/package.tgz')
+          assert.equal(createHash('sha256').update(data).digest('hex'),env.EXPECTED_ARCHIVE_SHA256)
+          const integrity='sha512-'+createHash('sha512').update(data).digest('base64')
+          const manifest=JSON.parse(execFileSync('tar',['-xOf','incoming/package.tgz','package/package.json'],{encoding:'utf8'}))
+          assert.equal(manifest.name,name);assert.equal(semver.valid(manifest.version),manifest.version)
+          assert(!Object.hasOwn(manifest,'private')||manifest.private===false,'private or invalid private flag')
+          assert(!Object.hasOwn(manifest,'tag'),'manifest tag override forbidden')
+          assert(!manifest.publishConfig || Object.keys(manifest.publishConfig).every(k=>['access','registry'].includes(k)))
+          assert(!manifest.publishConfig?.registry || /^https:\/\/registry\.npmjs\.org\/?$/.test(manifest.publishConfig.registry))
+          assert(!manifest.publishConfig?.access || manifest.publishConfig.access==='public')
+          assert.equal(manifest.repository?.url?.replace(/^git\+/,'').replace(/\.git$/,''),'https://github.com/'+repository)
+          async function metadata(){
+           const r=await fetch('https://registry.npmjs.org/'+encodeURIComponent(name),{redirect:'error',signal:AbortSignal.timeout(15000)})
+           assert.equal(r.status,200,'Existing public package required; initial publish bootstrap is separate')
+           const value=await r.json();assert.equal(value.name,name);assert(value.versions&&value['dist-tags']);return value
+          }
+          const before=await metadata(), version=manifest.version
+          for(const [v,item]of Object.entries(before.versions)){
+           assert.equal(semver.valid(v),v,'Unverifiable existing version')
+           assert(/^sha512-[A-Za-z0-9+/]{86}==$/.test(item.dist?.integrity),'Existing version SHA512 required')
+          }
+          if(before.versions[version]){
+           assert.equal(before.versions[version].dist?.integrity,integrity,'Existing version has different bytes')
+           console.log('Identical public version already exists; no publish attempted')
+          }else{
+           assert.equal(before['dist-tags'].latest??'<none>',env.EXPECTED_LATEST,'Latest changed or not reviewed')
+           assert(!Object.keys(before.versions).some(v=>semver.gte(v,version)),'Higher/equal version exists')
+           let failure=false
+           try{execFileSync('npm',['publish','incoming/package.tgz','--ignore-scripts','--access=null','--registry=https://registry.npmjs.org/','--fetch-retries=0'],{stdio:'pipe',timeout:120000})}catch{failure=true}
+           const after=await metadata()
+           for(const [v,item]of Object.entries(before.versions))assert.equal(after.versions[v]?.dist?.integrity,item.dist?.integrity,'Existing integrity changed')
+           assert.deepEqual(Object.keys(after.versions).sort(),[...Object.keys(before.versions),version].sort(),'Unexpected version inventory')
+           assert.equal(after.versions[version]?.dist?.integrity,integrity,'Published integrity mismatch')
+           assert.deepEqual(after['dist-tags'],{...before['dist-tags'],latest:version},'Unexpected dist-tag change')
+           if(failure)throw Error('CLI failed; resulting registry state checked; no retry')
+           console.log('PASS: OIDC publish and public registry integrity/version/tag verification')
+          }
+          JS

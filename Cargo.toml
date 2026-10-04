@@ -1,5 +1,6 @@
+# Local preflight modification: explicit source archive allowlist. Registry policy is unchanged.
 [package]
-exclude = ["*.tgz", "**/*.tgz", "/registration/**", "/state/**", "/.local/**", "/.state/**", "/.data/**", "/secrets/**", "/credentials/**", "/.env", "/.env.production", "/.env.local", "/*.tgz", "/*.tar.gz", "/*.tar", "/*.zip", "/*.whl", "/*.crate", "/.ruff_cache/**", "/.mypy_cache/**", "/.tox/**", "/.nox/**", "/.hypothesis/**", "/.coverage", "/.coverage.*", "/htmlcov/**", "/lcov.info", "/junit.xml", "/*.profraw", "/*.profdata", "/*.egg-info/**", "/target/**", "/node_modules/**", "/dist/**", "/build/**", "/.cache/**", "/.pytest_cache/**", "/coverage/**"]
+include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/LICENSE", "/NOTICE"]
 name = "zixcel-interaction"
 version = "0.10.0"
 edition = "2024"
