@@ -1,5 +1,7 @@
 # @zixcel/interaction
 
+[日本語](README.ja.md)
+
 Check the shape of data received by an application and distinguish success, conflict and rejection. This library provides JavaScript validators, TypeScript declarations and Rust source types and validation functions. The JavaScript package has no external runtime dependencies.
 
 ## Install
