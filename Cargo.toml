@@ -1,6 +1,6 @@
 # Local preflight modification: explicit source archive allowlist. Registry policy is unchanged.
 [package]
-include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/LICENSE", "/NOTICE"]
+include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/README.ja.md", "/LICENSE", "/NOTICE"]
 name = "zixcel-interaction"
 version = "0.10.0"
 edition = "2024"
