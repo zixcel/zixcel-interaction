@@ -1,10 +1,10 @@
-# データ形式と処理結果を検証する
+# Validate data shapes and operation results
 
-設定画面などで受け取った値を処理する前に、データ形式を検証します。処理結果については、形式が正しいことと、処理が成功したことを区別します。設定画面の実行例と出力は [README](../README.md#example-a-settings-screen) にまとめています。顧客事例ではなく、説明用のデータです。
+Validate input data before executing an operation. Distinguish structural validity from operation success. The [JavaScript guide](javascript.md) uses synthetic settings data and explains the contracts.
 
-## 入力宣言を使う
+## Declare operation inputs
 
-操作の入力形式と表示用ラベルを組み合わせたい場合は、`/input` を使います。値を自動変換しないため、boolean の `false` と文字列の `'false'` を区別できます。
+Import `/input` to combine input schemas with display labels. Validation does not coerce values: boolean `false` and string `"false"` remain distinct.
 
 ```js
 import { validateInputDeclaration, validateInputValues } from '@zixcel/interaction/input'
@@ -22,14 +22,14 @@ console.log(validateInputValues(declaration, { enabled: false })) // []
 console.log(validateInputValues(declaration, { enabled: 'false' })) // ['input/invalid']
 ```
 
-検証エラーを処理してから、アプリケーション側の操作処理に渡します。認可・通信・更新・競合制御・atomicity・永続化は呼出側が担当します。検証は権限の付与や操作の実行を行いません。
+Handle validation errors before dispatching an operation. The caller owns authorization, transport, mutation, concurrency control, atomicity, and persistence. Validation never grants permission or executes an operation.
 
-## Rust のソース API
+## Rust API
 
-Rust の型と検証関数は、同じリポジトリの `zixcel-interaction` ソースにあります。JavaScript の `validateResource`・`validateValue`・`validateOutcome` と Rust の `validate_invoke` は提供範囲が異なります。JavaScript の利用に Rust は必要ありません。
+The `zixcel-interaction` crate provides typed contracts and validation functions. JavaScript `validateResource`, `validateValue`, and `validateOutcome` and Rust `validate_invoke` have different API coverage. JavaScript consumers do not require Rust.
 
-ソース crate は version `0.10.0`、edition 2024、宣言された最低 Rust version は `1.97` です。registry は `zixcel-private` のままで、crates.io での公開やインストールを案内していません。パッケージ独自の optional/default feature はなく、宣言された serde 依存を使います。
+Install `zixcel-interaction = "0.10.0"` from crates.io. The crate uses edition 2024 and requires Rust 1.97 or later. It has no package-specific optional or default features. See the [crate README](../README.crate.md) for a compiled example.
 
-## 検証
+## Verification
 
-ソース checkout では `npm test`、Rust の確認には `cargo test --locked` を使います。JavaScript の実行例と配布TGZの検証は、公開 registry 上での配布完了や公開権限の証明にはなりません。対応済みの Node 環境・ESM entry point・互換性の範囲は [README](../README.md#verification) を参照してください。
+Run `npm test` for JavaScript and `cargo test --locked` for Rust in a source checkout. A local TGZ test validates the packaged JavaScript interface; official registry installation is a separate verification step. See the [README](../README.md) for supported runtimes and package boundaries.
