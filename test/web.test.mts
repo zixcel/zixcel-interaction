@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { validateResource, validateOutcome } from '../web/contracts.mjs'
+import { validateResource, validateOutcome } from '../dist/contracts.mjs'
 
 test('wire resource guards preserve false/null and reject private data and invalid revisions', () => {
   const value = { contract: {resource_id:'one',contract_revision:'c1',value_schema:{type:'boolean'},

@@ -34,9 +34,12 @@ jobs:
           : > "$NPM_CONFIG_GLOBALCONFIG"
           npm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund
       - name: Package metadata and real public registry dependencies
-        run: node .github/scripts/check-source.mjs
+        run: node .github/scripts/check-source.mts
       - name: Repository tests
-        run: node --test --test-isolation=none test/input.test.mjs test/web.test.mjs
+        run: |
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm test
       - name: Pack reviewed files without lifecycle hooks
         id: pack
         run: |
@@ -48,9 +51,9 @@ jobs:
         run: |
           consumer=$(mktemp -d)
           archive="$PWD/outgoing/package.tgz"
-          cp .github/scripts/consumer.mjs "$consumer/test.mjs"
+          cp .github/scripts/consumer.mts "$consumer/test.mts"
           printf '%s\n' '{"private":true,"type":"module"}' > "$consumer/package.json"
-          (cd "$consumer" && NPM_CONFIG_CACHE="$consumer/cache" npm install "$archive" --ignore-scripts --no-audit --no-fund --offline && node test.mjs)
+          (cd "$consumer" && NPM_CONFIG_CACHE="$consumer/cache" npm install "$archive" --ignore-scripts --no-audit --no-fund --offline && node test.mts)
       - id: artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

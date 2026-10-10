@@ -1,23 +1,24 @@
+import { object, keys, own, integer, finite } from './guards.mjs'
+import type { Availability, Outcome, ValueSchema } from './types/contracts.mjs'
+import type { ValidationBudget } from './types/validation.mjs'
+export type * from './types/contracts.mjs'
 // Browser wire guards for the same UI-neutral contracts as the Rust crate.
 export const CONTRACT = 'zixcel://interaction/v1'
-const own = (v, key) => Object.hasOwn(v, key)
-const object = v => v !== null && typeof v === 'object' && !Array.isArray(v)
-const keys = (v, allowed) => object(v) && Object.keys(v).every(k => allowed.includes(k))
-export const reference = v => typeof v === 'string' && v.length > 0 && new TextEncoder().encode(v).length <= 256 && !/[\u0000-\u001f\u007f-\u009f]/u.test(v)
+export const reference = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && new TextEncoder().encode(v).length <= 256 && !/[\u0000-\u001f\u007f-\u009f]/u.test(v)
 const statuses = ['ValidationError','Conflict','Forbidden','Unavailable','NotFound','PreconditionFailed']
-const availability = v => keys(v, ['state','reason']) && (v.state === 'available'
-  ? !own(v, 'reason') : ['unavailable','forbidden','precondition_failed'].includes(v.state) && reference(v.reason))
+const availability = (v: unknown): v is Availability => keys(v, ['state','reason']) && (v.state === 'available'
+  ? !own(v, 'reason') : typeof v.state === 'string' && ['unavailable','forbidden','precondition_failed'].includes(v.state) && reference(v.reason))
 
-export function validateOutcome(v) {
+export function validateOutcome(v: unknown): v is Outcome<unknown> {
   if (!object(v)) return false
   if (v.status === 'Success') return keys(v, ['status','value']) && own(v, 'value')
-  return keys(v, ['status','reason','issues']) && statuses.includes(v.status) && reference(v.reason)
+  return keys(v, ['status','reason','issues']) && typeof v.status === 'string' && statuses.includes(v.status) && reference(v.reason)
     && Array.isArray(v.issues) && v.issues.length <= 64
     && v.issues.every(i => keys(i, ['path','reason']) && typeof i.path === 'string' && reference(i.reason))
 }
 
-export function validateResource(v) {
-  const errors = []
+export function validateResource(v: unknown): string[] {
+  const errors: string[] = []
   if (!keys(v, ['contract','resource_revision','value']) || !reference(v.resource_revision)) return ['resource/invalid']
   const c = v.contract
   if (!keys(c, ['resource_id','contract_revision','value_schema','readable','availability','operations'])
@@ -38,19 +39,19 @@ export function validateResource(v) {
   return errors
 }
 
-export function validSchema(s, depth = 0, budget = { remaining: 4096 }) {
+export function validSchema(s: unknown, depth = 0, budget: ValidationBudget = { remaining: 4096 }): s is ValueSchema {
   if (depth > 16 || --budget.remaining < 0 || !object(s)) return false
   switch (s.type) {
     case 'null': case 'boolean': return keys(s, ['type'])
-    case 'string': return keys(s, ['type','min_length','max_length','choices'])
-      && Number.isInteger(s.min_length ?? 0) && Number.isInteger(s.max_length ?? 4096)
-      && (s.min_length ?? 0) >= 0 && (s.max_length ?? 4096) <= 65536
-      && (s.min_length ?? 0) <= (s.max_length ?? 4096)
-      && (s.choices === undefined || Array.isArray(s.choices) && s.choices.length <= 256 && s.choices.every(c => typeof c === 'string'))
+    case 'string': { const minimum = s.min_length ?? 0, maximum = s.max_length ?? 4096; return keys(s, ['type','min_length','max_length','choices'])
+      && integer(minimum) && integer(maximum)
+      && minimum >= 0 && maximum <= 65536
+      && minimum <= maximum
+      && (s.choices === undefined || Array.isArray(s.choices) && s.choices.length <= 256 && s.choices.every(c => typeof c === 'string')) }
     case 'number': case 'integer': return keys(s, ['type','minimum','maximum'])
-      && Number.isFinite(s.minimum) && Number.isFinite(s.maximum) && s.minimum <= s.maximum
+      && finite(s.minimum) && finite(s.maximum) && s.minimum <= s.maximum
       && (s.type === 'number' || Number.isSafeInteger(s.minimum) && Number.isSafeInteger(s.maximum))
-    case 'array': return keys(s, ['type','items','max_items']) && Number.isInteger(s.max_items)
+    case 'array': return keys(s, ['type','items','max_items']) && integer(s.max_items)
       && s.max_items >= 0 && s.max_items <= 1024 && validSchema(s.items, depth + 1, budget)
     case 'object': return keys(s, ['type','fields','required']) && object(s.fields)
       && Object.keys(s.fields).length <= 128 && Object.values(s.fields).every(f => validSchema(f, depth + 1, budget))
@@ -60,11 +61,11 @@ export function validSchema(s, depth = 0, budget = { remaining: 4096 }) {
   }
 }
 
-export function validateValue(schema, value) {
+export function validateValue(schema: unknown, value: unknown): boolean {
   return validSchema(schema) && matchesValue(schema, value)
 }
 
-function matchesValue(s, v, depth = 0, budget = { remaining: 4096 }) {
+function matchesValue(s: ValueSchema, v: unknown, depth = 0, budget: ValidationBudget = { remaining: 4096 }): boolean {
   if (depth > 16 || --budget.remaining < 0) return false
   switch (s.type) {
     case 'null': return v === null

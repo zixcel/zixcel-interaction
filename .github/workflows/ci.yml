@@ -24,4 +24,7 @@ jobs:
         with:
           node-version: '24'
       - name: Test web contracts
-        run: node --test test/*.test.mjs
+        run: |
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm test

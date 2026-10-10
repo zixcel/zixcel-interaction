@@ -1,3 +1,4 @@
+/** UI-neutral wire contracts shared by guards and host applications. */
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 export type ValueSchema = { type: 'null' | 'boolean' }
   | { type: 'string'; min_length?: number; max_length?: number; choices?: string[] }
@@ -25,9 +26,5 @@ export type Outcome<T> = { status: 'Success'; value: T } | Failure
 export interface Change { resource_id: string; resource_revision: string; contract_revision: string }
 export type ChangeBatch = { kind: 'changes'; after: string; cursor: string; changes: Change[] }
   | { kind: 'reset'; cursor: string; reason: string }
-export const CONTRACT: 'zixcel://interaction/v1'
-export function reference(value: unknown): value is string
-export function validSchema(value: unknown): value is ValueSchema
-export function validateValue(schema: unknown, value: unknown): boolean
-export function validateResource(value: unknown): string[]
-export function validateOutcome(value: unknown): value is Outcome<unknown>
+export interface InputField {label:string;sensitive:boolean;choices?:{value:string;label:string}[]}
+export interface InputDeclaration {action:ActionContract;fields:Record<string,InputField>}
