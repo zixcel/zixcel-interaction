@@ -26,3 +26,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/policy-types"
           "$RUNNER_TEMP/policy-types/bin/pip" install -r .github/policy/requirements.txt
           "$RUNNER_TEMP/policy-types/bin/mypy" --strict .github/policy .github/oss-policy-check.py .github/policy-tests
+      - name: Check archive verifier types
+        run: '"$RUNNER_TEMP/policy-types/bin/mypy" --strict .github/scripts/package_check .github/scripts/check-pack.py .github/scripts/tests'
+      - name: Verify archive rejection cases
+        run: PYTHONPATH=.github/scripts python3 -m unittest discover -s .github/scripts/tests

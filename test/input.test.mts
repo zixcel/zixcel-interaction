@@ -1,8 +1,9 @@
+import type { DeclarationFixture, FixtureMutation } from './types/fixtures.mjs'
 // Owner input declarations: structure only, never source/semantic interpretation.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {validateInputDeclaration, validateInputValues} from '../web/input.mjs'
-const declaration = () => ({action:{operation_id:'replace',target:'source:one',contract_revision:'exact:one',
+import {validateInputDeclaration, validateInputValues} from '../dist/input.mjs'
+const declaration = (): DeclarationFixture => ({action:{operation_id:'replace',target:'source:one',contract_revision:'exact:one',
   availability:{state:'available'},expected_revision_required:true,
   input_schema:{type:'object',fields:{f1:{type:'string',max_length:80},f2:{type:'string',choices:['c1','c2'],max_length:80}},required:['f1','f2']}},
   fields:{f1:{label:'Value',sensitive:false},f2:{label:'Decision',sensitive:false,choices:[{value:'c1',label:'Same label'},{value:'c2',label:'Same label'}]}}})
@@ -10,7 +11,7 @@ const declaration = () => ({action:{operation_id:'replace',target:'source:one',c
 test('owner fields preserve exact choices; labels cannot be submitted as references', () => {
   const d=declaration()
   assert.deepEqual(validateInputDeclaration(d),[])
-  assert.deepEqual(validateInputValues(d,{f1:'日本語',f2:'c2'}),[])
+  assert.deepEqual(validateInputValues(d,{f1:'\u65e5\u672c\u8a9e',f2:'c2'}),[])
   assert.ok(validateInputValues(d,{f1:'value',f2:'Same label'}).length)
   assert.ok(validateInputValues(d,{f1:'value',f2:'c2',roleRef:'injected'}).length)
   d.fields.f1.label='Different label'
@@ -18,9 +19,10 @@ test('owner fields preserve exact choices; labels cannot be submitted as referen
 })
 
 test('closed declaration refuses inferred/recursive/code fields and schema mismatch', () => {
-  for(const change of [d=>{d.fields.f1.sourcePath='/secret'},d=>{d.fields.f1.component='Remote'},
+  const changes: FixtureMutation[] = [d=>{d.fields.f1.sourcePath='/secret'},d=>{d.fields.f1.component='Remote'},
     d=>{delete d.fields.f1},d=>{d.action.input_schema.fields.f1={type:'object',fields:{}}},
-    d=>{d.fields.f2.choices[0].value='not-a-choice'},d=>{d.fields.f1.initial='secret'}]){
+    d=>{assert.ok(d.fields.f2.choices);d.fields.f2.choices[0].value='not-a-choice'},d=>{d.fields.f1.initial='secret'}]
+  for(const change of changes){
     const d=declaration();change(d);assert.ok(validateInputDeclaration(d).length)
   }
 })
