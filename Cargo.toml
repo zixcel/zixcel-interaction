@@ -1,15 +1,14 @@
-# Local preflight modification: explicit source archive allowlist. Registry policy is unchanged.
 [package]
-include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/README.ja.md", "/LICENSE", "/NOTICE"]
+include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/README.crate.md", "/LICENSE", "/NOTICE"]
 name = "zixcel-interaction"
 version = "0.10.0"
 edition = "2024"
 rust-version = "1.97"
 description = "Transport-neutral resource, action, revision and change contracts"
 license = "Apache-2.0"
-readme = "README.md"
+readme = "README.crate.md"
 repository = "https://github.com/zixcel/zixcel-interaction"
-publish = ["zixcel-private"]
+publish = ["crates-io"]
 
 [workspace]
 members = ["."]

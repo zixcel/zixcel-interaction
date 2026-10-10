@@ -46,9 +46,3 @@ cargo clippy --locked --all-targets --all-features -- -D warnings
 [API documentation](https://docs.rs/zixcel-interaction) · [Source](https://github.com/zixcel/zixcel-interaction) · [Usage guide](https://github.com/zixcel/zixcel-interaction/blob/main/docs/getting-started.md)
 
 Apache-2.0. Retain the package LICENSE and NOTICE; see the source repository for security reporting and contribution guidelines.
-
-## JavaScript package
-
-The separate `@zixcel/interaction` ESM package exposes JavaScript validators and TypeScript declarations. npm availability must be checked independently of this crate.
-
-See the [JavaScript usage guide](docs/javascript.md) for examples and its distinct exports.
