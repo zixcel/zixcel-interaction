@@ -60,3 +60,5 @@ TypeScript. Run `npm ci --ignore-scripts`, `npm run typecheck`, and `npm test`.
 The build produces browser-compatible ESM and matching declarations in `dist/`.
 Package exports resolve both from the same build. Inputs remain `unknown` until
 runtime validation succeeds. Shape validation grants no execution authority.
+
+[OSS responsibility and source completion](docs/oss-source-contract.md) defines the supported package boundary and required acceptance. It does not declare unexecuted source, distribution or production checks complete.
