@@ -1,0 +1,460 @@
+{
+  "repository": "zixcel/zixcel-interaction",
+  "purpose": "Describe resource reads, actions and state changes with typed requests and explicit results.",
+  "responsibility_boundary": "Own the named reusable integration/data mechanism. Product roles/UI and operational approvals stay with consumers; transport/custody reuse managed Crowsi components where capabilities fit. Planning-only APIs must remain clearly distinguished from implemented external operations.",
+  "packages": [
+    {
+      "manifest": "Cargo.toml",
+      "package": "zixcel-interaction",
+      "ecosystem": "rust",
+      "description": "Transport-neutral resource, action, revision and change contracts",
+      "interfaces": {
+        "lib": "src/lib.rs",
+        "features": {},
+        "bins": [],
+        "public_modules": [],
+        "public_reexports": [
+          "input::*",
+          "schema::{Issue, ValueSchema}",
+          "wire::*"
+        ],
+        "implicit_bins": []
+      },
+      "declared_commands": {}
+    },
+    {
+      "manifest": "package.json",
+      "package": "@zixcel/interaction",
+      "ecosystem": "npm",
+      "description": "Generic resource, action, revision, outcome and input-declaration contracts",
+      "interfaces": {
+        "exports": {
+          ".": {
+            "types": "./dist/contracts.d.mts",
+            "import": "./dist/contracts.mjs"
+          },
+          "./input": {
+            "types": "./dist/input.d.mts",
+            "import": "./dist/input.mjs"
+          }
+        },
+        "bin": {},
+        "main": null,
+        "types": null
+      },
+      "declared_commands": {
+        "test": "npm run build && node --test test/*.test.mts",
+        "typecheck": "npm run build && tsc -p tsconfig.test.json",
+        "build": "node scripts/clean-dist.mts && tsc -p tsconfig.json",
+        "prepack": "npm run typecheck && npm test"
+      }
+    }
+  ],
+  "schema_definitions": [],
+  "test_sources": [
+    ".github/scripts/tests/test_archive.py",
+    "src/schema.rs",
+    "test/input.test.mts",
+    "test/types/fixtures.mts",
+    "test/web.test.mts",
+    "tests/contract.rs",
+    "tests/input.rs",
+    "tsconfig.test.json"
+  ],
+  "example_sources": [],
+  "workflow_definitions": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "jobs": [
+        {
+          "job": "test",
+          "condition": null,
+          "runs_on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "condition": null
+            },
+            {
+              "name": "Install declared Rust toolchain",
+              "run": "rustup toolchain install 1.97 --profile minimal",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Test default features",
+              "run": "cargo +1.97 test --locked",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Test all features",
+              "run": "cargo +1.97 test --locked --all-features",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "condition": null
+            },
+            {
+              "name": "Test web contracts",
+              "run": "npm ci --ignore-scripts\nnpm run typecheck\nnpm test\n",
+              "uses": null,
+              "condition": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/oss-policy.yml",
+      "jobs": [
+        {
+          "job": "repository-policy",
+          "condition": null,
+          "runs_on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+              "condition": null
+            },
+            {
+              "name": "Verify repository policy",
+              "run": "python3 .github/oss-policy-check.py",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Verify policy regression tests",
+              "run": "cd .github && python3 -m unittest discover -s policy-tests",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Check policy types",
+              "run": "python3 -m venv \"$RUNNER_TEMP/policy-types\"\n\"$RUNNER_TEMP/policy-types/bin/pip\" install -r .github/policy/requirements.txt\n\"$RUNNER_TEMP/policy-types/bin/mypy\" --strict .github/policy .github/oss-policy-check.py .github/policy-tests\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Check archive verifier types",
+              "run": "\"$RUNNER_TEMP/policy-types/bin/mypy\" --strict .github/scripts/package_check .github/scripts/check-pack.py .github/scripts/tests",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Verify archive rejection cases",
+              "run": "PYTHONPATH=.github/scripts python3 -m unittest discover -s .github/scripts/tests",
+              "uses": null,
+              "condition": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/package-ci.yml",
+      "jobs": [
+        {
+          "job": "verify",
+          "condition": null,
+          "runs_on": "ubuntu-24.04",
+          "steps": [
+            {
+              "name": "Isolated npm configuration and fresh cache",
+              "run": ": > \"$RUNNER_TEMP/release-user.npmrc\"\n: > \"$RUNNER_TEMP/release-global.npmrc\"\necho \"NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache\" >> \"$GITHUB_ENV\"\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "condition": null
+            },
+            {
+              "name": "Fixed npm and isolated empty configuration",
+              "run": "for config in .npmrc .pnpmfile.cjs .pnpmfile.mjs pnpm-workspace.yaml .yarnrc .yarnrc.yml; do test ! -e \"$config\"; done\nnode --input-type=module -e 'import {readFileSync} from \"node:fs\"; if(JSON.parse(readFileSync(\"package.json\")).pnpm) process.exit(1)'\n: > \"$NPM_CONFIG_USERCONFIG\"\n: > \"$NPM_CONFIG_GLOBALCONFIG\"\nnpm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Package metadata and real public registry dependencies",
+              "run": "node .github/scripts/check-source.mts",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Repository tests",
+              "run": "npm ci --ignore-scripts\nnpm run typecheck\nnpm test\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Pack reviewed files without lifecycle hooks",
+              "run": "mkdir outgoing\nnpm pack --ignore-scripts --json --pack-destination outgoing > \"$RUNNER_TEMP/pack.json\"\nmv \"outgoing/$(node -e 'console.log(JSON.parse(require(\"node:fs\").readFileSync(process.argv[1]))[0].filename)' \"$RUNNER_TEMP/pack.json\")\" outgoing/package.tgz\n/usr/bin/python3 -E .github/scripts/check-pack.py outgoing/package.tgz > outgoing/verification.json\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Fresh cache installed pack consumer",
+              "run": "consumer=$(mktemp -d)\narchive=\"$PWD/outgoing/package.tgz\"\ncp .github/scripts/consumer.mts \"$consumer/test.mts\"\nprintf '%s\\n' '{\"private\":true,\"type\":\"module\"}' > \"$consumer/package.json\"\n(cd \"$consumer\" && NPM_CONFIG_CACHE=\"$consumer/cache\" npm install \"$archive\" --ignore-scripts --no-audit --no-fund --offline && node test.mts)\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+              "condition": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/publish-cargo.yml",
+      "jobs": [
+        {
+          "job": "verify",
+          "condition": "vars.REGISTRY_VALIDATION_ENABLED == 'true' && github.event.repository.private == false",
+          "runs_on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "condition": null
+            },
+            {
+              "name": "Require the reviewed source",
+              "run": "test \"$APPROVED_SHA\" = \"$GITHUB_SHA\"\nif [ \"$REGISTRY_OPERATION\" = publish ]; then\n  git merge-base --is-ancestor HEAD origin/main\nelse\n  git merge-base --is-ancestor origin/main HEAD\nfi\nrustup toolchain install 1.97 --profile minimal --component rustfmt --component clippy\nrustup override set 1.97\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Validate public package metadata",
+              "run": "cargo metadata --locked --no-deps --format-version 1 > /tmp/package-metadata.json\nnode --input-type=module <<'JS'\nimport fs from 'node:fs';\nconst d = JSON.parse(fs.readFileSync('/tmp/package-metadata.json'));\nconst p = d.packages.find(p => p.manifest_path === `${process.env.GITHUB_WORKSPACE}/Cargo.toml`);\nif (!p || JSON.stringify(p.publish) !== '[\"crates-io\"]'\n  || p.repository !== `https://github.com/${process.env.GITHUB_REPOSITORY}`) {\n  throw new Error('Public package metadata is not the reviewed crate');\n}\nfs.appendFileSync(process.env.GITHUB_ENV, `PACKAGE_ARCHIVE=target/package/${p.name}-${p.version}.crate\\n`);\nfs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${p.version}\\n`);\nJS\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Verify independent package build",
+              "run": "cargo fmt --all -- --check\ncargo test --locked --all-features\ncargo clippy --locked --all-targets --all-features -- -D warnings\ncargo package --locked --registry crates-io\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Record the review artifact digest",
+              "run": "sha256sum \"$PACKAGE_ARCHIVE\"\necho \"sha256=$(sha256sum \"$PACKAGE_ARCHIVE\" | cut -d ' ' -f 1)\" >> \"$GITHUB_OUTPUT\"\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "condition": null
+            }
+          ]
+        },
+        {
+          "job": "publish",
+          "condition": "inputs.operation == 'publish' && vars.REGISTRY_PUBLISH_ENABLED == 'true' && github.ref_type == 'tag'",
+          "runs_on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "condition": null
+            },
+            {
+              "name": "Require the approved tag and CI artifact",
+              "run": "test \"$GITHUB_REF_NAME\" = \"v${VERSION}\"\ntest -n \"$APPROVED_SHA256\"\ntest \"$VERIFIED_SHA256\" = \"$APPROVED_SHA256\"\nrustup toolchain install 1.97 --profile minimal --component rustfmt --component clippy\nrustup override set 1.97\ncargo package --locked --registry crates-io\ntest \"$(sha256sum target/package/*.crate | cut -d ' ' -f 1)\" = \"$APPROVED_SHA256\"\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Obtain a short-lived scoped crates.io token",
+              "run": null,
+              "uses": "rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18",
+              "condition": null
+            },
+            {
+              "name": "Publish the approved crate",
+              "run": "cargo publish --locked --registry crates-io",
+              "uses": null,
+              "condition": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "jobs": [
+        {
+          "job": "prepare",
+          "condition": "github.repository == 'zixcel/zixcel-interaction' && github.ref == 'refs/heads/main'",
+          "runs_on": "ubuntu-24.04",
+          "steps": [
+            {
+              "name": "Exact reviewed source and dispatch",
+              "run": "[[ \"$GITHUB_EVENT_NAME\" == workflow_dispatch && \"$GITHUB_REF\" == refs/heads/main ]]\n[[ \"$EXPECTED_SOURCE_SHA\" =~ ^[a-f0-9]{40}$ && \"$EXPECTED_SOURCE_SHA\" == \"$GITHUB_SHA\" ]]\n[[ \"$EXPECTED_ARCHIVE_SHA256\" =~ ^[a-f0-9]{64}$ ]]\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Isolated npm configuration and fresh cache",
+              "run": ": > \"$RUNNER_TEMP/release-user.npmrc\"\n: > \"$RUNNER_TEMP/release-global.npmrc\"\necho \"NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache\" >> \"$GITHUB_ENV\"\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "condition": null
+            },
+            {
+              "name": "Fixed npm and isolated empty configuration",
+              "run": "for config in .npmrc .pnpmfile.cjs .pnpmfile.mjs pnpm-workspace.yaml .yarnrc .yarnrc.yml; do test ! -e \"$config\"; done\nnode --input-type=module -e 'import {readFileSync} from \"node:fs\"; if(JSON.parse(readFileSync(\"package.json\")).pnpm) process.exit(1)'\n: > \"$NPM_CONFIG_USERCONFIG\"\n: > \"$NPM_CONFIG_GLOBALCONFIG\"\nnpm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Package metadata and real public registry dependencies",
+              "run": "node .github/scripts/check-source.mts",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Repository tests",
+              "run": "npm ci --ignore-scripts\nnpm run typecheck\nnpm test\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Pack reviewed files without lifecycle hooks",
+              "run": "mkdir outgoing\nnpm pack --ignore-scripts --json --pack-destination outgoing > \"$RUNNER_TEMP/pack.json\"\nmv \"outgoing/$(node -e 'console.log(JSON.parse(require(\"node:fs\").readFileSync(process.argv[1]))[0].filename)' \"$RUNNER_TEMP/pack.json\")\" outgoing/package.tgz\n/usr/bin/python3 -E .github/scripts/check-pack.py outgoing/package.tgz > outgoing/verification.json\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Fresh cache installed pack consumer",
+              "run": "consumer=$(mktemp -d)\narchive=\"$PWD/outgoing/package.tgz\"\ncp .github/scripts/consumer.mts \"$consumer/test.mts\"\nprintf '%s\\n' '{\"private\":true,\"type\":\"module\"}' > \"$consumer/package.json\"\n(cd \"$consumer\" && NPM_CONFIG_CACHE=\"$consumer/cache\" npm install \"$archive\" --ignore-scripts --no-audit --no-fund --offline && node test.mts)\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Match reviewed distribution digest",
+              "run": "echo \"$EXPECTED_ARCHIVE_SHA256  outgoing/package.tgz\" | sha256sum --check --strict",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+              "condition": null
+            }
+          ]
+        },
+        {
+          "job": "publish",
+          "condition": null,
+          "runs_on": "ubuntu-24.04",
+          "steps": [
+            {
+              "name": "Isolated npm configuration and fresh cache",
+              "run": ": > \"$RUNNER_TEMP/release-user.npmrc\"\n: > \"$RUNNER_TEMP/release-global.npmrc\"\necho \"NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/release-user.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_GLOBALCONFIG=$RUNNER_TEMP/release-global.npmrc\" >> \"$GITHUB_ENV\"\necho \"NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache\" >> \"$GITHUB_ENV\"\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": ": > \"$NPM_CONFIG_USERCONFIG\"\n: > \"$NPM_CONFIG_GLOBALCONFIG\"\nnpm install --global npm@11.12.1 --ignore-scripts --no-audit --no-fund\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+              "condition": null
+            },
+            {
+              "name": "Publish reviewed archive once with OIDC and verify registry state",
+              "run": "node --input-type=module <<'JS'\nimport assert from 'node:assert/strict'\nimport {readFileSync} from 'node:fs'\nimport {createHash} from 'node:crypto'\nimport {execFileSync} from 'node:child_process'\nimport {createRequire} from 'node:module'\nimport {resolve} from 'node:path'\nconst name='@zixcel/interaction', repository='zixcel/zixcel-interaction', env=process.env\nassert.equal(env.GITHUB_REPOSITORY,repository);assert.equal(env.GITHUB_REF,'refs/heads/main')\nassert.equal(env.GITHUB_EVENT_NAME,'workflow_dispatch');assert.equal(env.GITHUB_SHA,env.EXPECTED_SOURCE_SHA)\nassert(/^[a-f0-9]{40}$/.test(env.EXPECTED_SOURCE_SHA));assert(/^[a-f0-9]{64}$/.test(env.EXPECTED_ARCHIVE_SHA256))\nassert(!env.NPM_TOKEN&&!env.NODE_AUTH_TOKEN,'token fallback forbidden')\nassert(env.ACTIONS_ID_TOKEN_REQUEST_URL&&env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,'GitHub OIDC unavailable')\nassert.equal(execFileSync('npm',['--version'],{encoding:'utf8'}).trim(),'11.12.1')\nconst require=createRequire(resolve(execFileSync('npm',['root','-g'],{encoding:'utf8'}).trim(),'npm/package.json'))\nconst semver=require('semver'), data=readFileSync('incoming/package.tgz')\nassert.equal(createHash('sha256').update(data).digest('hex'),env.EXPECTED_ARCHIVE_SHA256)\nconst integrity='sha512-'+createHash('sha512').update(data).digest('base64')\nconst manifest=JSON.parse(execFileSync('tar',['-xOf','incoming/package.tgz','package/package.json'],{encoding:'utf8'}))\nassert.equal(manifest.name,name);assert.equal(semver.valid(manifest.version),manifest.version)\nassert(!Object.hasOwn(manifest,'private')||manifest.private===false,'private or invalid private flag')\nassert(!Object.hasOwn(manifest,'tag'),'manifest tag override forbidden')\nassert(!manifest.publishConfig || Object.keys(manifest.publishConfig).every(k=>['access','registry'].includes(k)))\nassert(!manifest.publishConfig?.registry || /^https:\\/\\/registry\\.npmjs\\.org\\/?$/.test(manifest.publishConfig.registry))\nassert(!manifest.publishConfig?.access || manifest.publishConfig.access==='public')\nassert.equal(manifest.repository?.url?.replace(/^git\\+/,'').replace(/\\.git$/,''),'https://github.com/'+repository)\nasync function metadata(){\n const r=await fetch('https://registry.npmjs.org/'+encodeURIComponent(name),{redirect:'error',signal:AbortSignal.timeout(15000)})\n assert.equal(r.status,200,'Existing public package required; initial publish bootstrap is separate')\n const value=await r.json();assert.equal(value.name,name);assert(value.versions&&value['dist-tags']);return value\n}\nconst before=await metadata(), version=manifest.version\nfor(const [v,item]of Object.entries(before.versions)){\n assert.equal(semver.valid(v),v,'Unverifiable existing version')\n assert(/^sha512-[A-Za-z0-9+/]{86}==$/.test(item.dist?.integrity),'Existing version SHA512 required')\n}\nif(before.versions[version]){\n assert.equal(before.versions[version].dist?.integrity,integrity,'Existing version has different bytes')\n console.log('Identical public version already exists; no publish attempted')\n}else{\n assert.equal(before['dist-tags'].latest??'<none>',env.EXPECTED_LATEST,'Latest changed or not reviewed')\n assert(!Object.keys(before.versions).some(v=>semver.gte(v,version)),'Higher/equal version exists')\n let failure=false\n try{execFileSync('npm',['publish','incoming/package.tgz','--ignore-scripts','--access=null','--registry=https://registry.npmjs.org/','--fetch-retries=0'],{stdio:'pipe',timeout:120000})}catch{failure=true}\n const after=await metadata()\n for(const [v,item]of Object.entries(before.versions))assert.equal(after.versions[v]?.dist?.integrity,item.dist?.integrity,'Existing integrity changed')\n assert.deepEqual(Object.keys(after.versions).sort(),[...Object.keys(before.versions),version].sort(),'Unexpected version inventory')\n assert.equal(after.versions[version]?.dist?.integrity,integrity,'Published integrity mismatch')\n assert.deepEqual(after['dist-tags'],{...before['dist-tags'],latest:version},'Unexpected dist-tag change')\n if(failure)throw Error('CLI failed; resulting registry state checked; no retry')\n console.log('PASS: OIDC publish and public registry integrity/version/tag verification')\n}\nJS\n",
+              "uses": null,
+              "condition": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/verify-cargo.yml",
+      "jobs": [
+        {
+          "job": "verify",
+          "condition": null,
+          "runs_on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "condition": null
+            },
+            {
+              "name": "Install the declared Rust toolchain",
+              "run": "rustup toolchain install 1.97 --profile minimal --component rustfmt --component clippy\nrustup override set 1.97\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": "Verify source and independent package",
+              "run": "cargo fmt --all -- --check\ncargo test --locked --all-features\ncargo clippy --locked --all-targets --all-features -- -D warnings\ncargo package --locked --registry crates-io\nsha256sum target/package/zixcel-interaction-0.10.0.crate\n",
+              "uses": null,
+              "condition": null
+            },
+            {
+              "name": null,
+              "run": null,
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "condition": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence_policy": "Declarations and source paths are not proof of an executed acceptance. Exact CI head and result are recorded separately. No live accounts or production acceptance is inferred."
+}
