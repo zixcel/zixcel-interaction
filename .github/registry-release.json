@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "repository": "zixcel/zixcel-interaction",
+  "defaultBranch": "main",
+  "requiredWorkflows": [
+    "ci.yml",
+    "oss-policy.yml",
+    "verify-cargo.yml"
+  ],
+  "packages": [
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "name": "@zixcel/interaction",
+      "installDirectory": "."
+    },
+    {
+      "ecosystem": "cargo",
+      "manifest": "Cargo.toml",
+      "name": "zixcel-interaction",
+      "installDirectory": "."
+    }
+  ]
+}
