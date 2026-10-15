@@ -6,7 +6,8 @@
     "types": [
       "node"
     ],
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "web/**/*.mts",
