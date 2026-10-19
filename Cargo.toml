@@ -1,4 +1,6 @@
 [package]
+categories = ["data-structures", "development-tools"]
+keywords = ["typed-contracts", "user-interaction", "state-management", "rust", "typescript"]
 include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/tests/**", "/README.md", "/README.crate.md", "/LICENSE", "/NOTICE"]
 name = "zixcel-interaction"
 version = "0.10.0"
