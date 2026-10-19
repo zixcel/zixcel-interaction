@@ -43,5 +43,12 @@
   "devDependencies": {
     "typescript": "7.0.2",
     "@types/node": "24.19.2"
-  }
+  },
+  "keywords": [
+    "typed-contracts",
+    "user-interaction",
+    "state-management",
+    "rust",
+    "typescript"
+  ]
 }
