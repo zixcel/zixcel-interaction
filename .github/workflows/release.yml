@@ -50,7 +50,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '24.15.0'
+          node-version: '24.22.1'
           package-manager-cache: false
       - name: Fixed npm and isolated empty configuration
         run: |
@@ -112,7 +112,7 @@ jobs:
           echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/empty-npm-cache" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '24.15.0'
+          node-version: '24.22.1'
           package-manager-cache: false
       - run: |
           : > "$NPM_CONFIG_USERCONFIG"
