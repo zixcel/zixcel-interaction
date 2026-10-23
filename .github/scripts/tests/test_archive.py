@@ -1,4 +1,5 @@
 """Synthetic archives exercise rejection without extracting files or using accounts."""
+import gzip
 import io
 import json
 import pathlib
@@ -59,9 +60,12 @@ class ArchiveTests(unittest.TestCase):
     def test_size_checked_before_reading_member_body(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / "oversize.tgz"
-            with tarfile.open(path, "w:gz") as archive:
-                entry = tarfile.TarInfo("package/oversize"); entry.size = 16_777_217
-                archive.addfile(entry)
+            entry = tarfile.TarInfo("package/oversize"); entry.size = 16_777_217
+            # A header-only hostile fixture: do not allocate its declared body.
+            # Python 3.14 rejects addfile without a nonempty member's fileobj.
+            with gzip.open(path, "wb") as stream:
+                stream.write(entry.tobuf(format=tarfile.USTAR_FORMAT))
+                stream.write(b"\0" * 1024)
             with self.assertRaisesRegex(ValueError, "expanded archive size"):
                 check_archive(path)
 
