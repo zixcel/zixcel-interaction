@@ -42,7 +42,7 @@
   "description": "Generic resource, action, revision, outcome and input-declaration contracts",
   "devDependencies": {
     "typescript": "7.0.2",
-    "@types/node": "24.19.2"
+    "@types/node": "26.6.6"
   },
   "keywords": [
     "typed-contracts",
